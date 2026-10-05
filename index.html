@@ -85,6 +85,7 @@
     <div class="row">
       <button class="secondary" id="openScreenIt">Schermo IT</button>
       <button class="secondary" id="openScreenFr">Schermo FR</button>
+      <button class="secondary" id="openScreenDual">Schermo doppio</button>
       <button class="secondary" id="openPhone">Telefono</button>
     </div>
     <small class="hint">Lo schermo si apre in una nuova finestra: spostala sul proiettore e premi <b>F</b> per il tutto schermo.</small>
@@ -247,6 +248,7 @@ $('start').onclick = async () => {
           if (lang !== langs[0]) return;
           render('orig', text, final);
           bc.postMessage({ lang: 'orig', text, final });
+          if (final) relay.final('orig', text); else relay.partial('orig', text);
           return;
         }
         // Filtro echo: se la "traduzione" coincide con l'originale (il modello ha ripetuto
@@ -306,6 +308,7 @@ function updateStats() {
 const base = location.href.replace(/[^/]*$/, '');
 $('openScreenIt').onclick = () => window.open(base + 'schermo.html?lang=it', 'schermo_it', 'width=1280,height=720');
 $('openScreenFr').onclick = () => window.open(base + 'schermo.html?lang=fr', 'schermo_fr', 'width=1280,height=720');
+$('openScreenDual').onclick = () => window.open(base + 'schermo.html?lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
 $('openPhone').onclick = () => window.open(base + `telefono.html?evento=${encodeURIComponent($('eventId').value.trim())}&lang=fr`, '_blank');
 
 window.addEventListener('beforeunload', (e) => { if (sessions.length) { e.preventDefault(); e.returnValue = ''; } });

@@ -41,7 +41,7 @@ export class Relay {
   constructor(eventId) {
     this.eventId = eventId || 'evento';
     this.enabled = !!db;
-    this.lastPartial = 0;
+    this.lastPartial = {}; // per lingua: originale, IT e FR scrivono in parallelo
   }
 
   base(lang) { return db.ref(`eventi/${this.eventId}/${lang}`); }
@@ -50,8 +50,8 @@ export class Relay {
   partial(lang, text) {
     if (!this.enabled) return;
     const now = Date.now();
-    if (text !== '' && now - this.lastPartial < 250) return;
-    this.lastPartial = now;
+    if (text !== '' && now - (this.lastPartial[lang] || 0) < 250) return;
+    this.lastPartial[lang] = now;
     this.base(lang).child('current').set({ text, t: now });
   }
 
@@ -69,11 +69,29 @@ export class Relay {
   }
 }
 
-/** Lato telefono: ascolta una lingua. */
-export function subscribe(eventId, lang, { onCurrent, onLine }) {
+/**
+ * Ascolta una lingua (telefono, schermo in modalità Firebase).
+ * @param {{history?: number}} [opts]  history: quante righe passate caricare (0 = solo da adesso in poi)
+ */
+export function subscribe(eventId, lang, { onCurrent, onLine }, { history = 30 } = {}) {
   if (!db) throw new Error('Firebase non configurato');
   const base = db.ref(`eventi/${eventId}/${lang}`);
-  base.child('current').on('value', (snap) => onCurrent((snap.val() || {}).text || ''));
-  base.child('lines').limitToLast(30).on('child_added', (snap) => onLine(snap.val()));
-  return () => base.off();
+  const cur = base.child('current');
+  const lines = base.child('lines');
+  let first = true;
+  const curCb = cur.on('value', (snap) => {
+    // Con history 0 ignoriamo il valore già presente (riga rimasta a metà da una sessione precedente).
+    if (first && history === 0) { first = false; return; }
+    first = false;
+    onCurrent((snap.val() || {}).text || '');
+  });
+  let q = null, cb = null, cancelled = false;
+  const attach = (query) => { q = query; cb = q.on('child_added', (snap) => onLine(snap.val())); };
+  if (history > 0) attach(lines.limitToLast(history));
+  else lines.orderByKey().limitToLast(1).once('value').then((snap) => {
+    if (cancelled) return;
+    let last = null; snap.forEach((c) => { last = c.key; });
+    attach(last ? lines.orderByKey().startAfter(last) : lines.orderByKey());
+  });
+  return () => { cancelled = true; cur.off('value', curCb); if (q) q.off('child_added', cb); };
 }

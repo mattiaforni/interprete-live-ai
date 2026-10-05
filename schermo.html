@@ -8,20 +8,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Cossette+Texte:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --size: 5.5vh;      /* altezza del carattere */
-    --lines: 2;         /* righe visibili */
+    --size: 5.5vh;      /* altezza del carattere della fascia principale */
+    --lines: 2;         /* righe visibili per fascia */
     --offset: 8vh;      /* distanza dal bordo (alta/bassa) */
     --lh: 1.25;
+    --sec: 0.62;        /* scala della fascia secondaria */
     --font: "Cossette Texte", Tahoma, "Trebuchet MS", sans-serif;
     --azzurro: #D3EBF1; --mattone: #61180C; --corallo: #E95D6D;
   }
   /* --- temi: sfondo pagina / fascia / testo / bordo --- */
-  html[data-theme="scuro"]        { --bg:#000;          --band:#141414;       --fg:#fff;            --border:#333;           --font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
-  html[data-theme="chiaro"]       { --bg:#fff;          --band:#f1f1f1;       --fg:#111;            --border:#ccc;           --font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
-  html[data-theme="test-azzurro"] { --bg:var(--azzurro); --band:var(--azzurro); --fg:var(--mattone);  --border:var(--mattone); }
-  html[data-theme="test-mattone"] { --bg:var(--azzurro); --band:var(--mattone); --fg:var(--azzurro);  --border:var(--mattone); }
-  html[data-theme="test-notte"]   { --bg:#000;          --band:var(--mattone); --fg:var(--azzurro);  --border:var(--azzurro); }
-  html[data-theme="test-corallo"] { --bg:var(--azzurro); --band:var(--corallo); --fg:#fff;            --border:var(--mattone); }
+  html[data-theme="scuro"]        { --bg:#000;           --band:#141414;        --fg:#fff;           --border:#333;           --font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  html[data-theme="chiaro"]       { --bg:#fff;           --band:#f1f1f1;        --fg:#111;           --border:#ccc;           --font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  html[data-theme="test-azzurro"] { --bg:var(--azzurro); --band:var(--azzurro); --fg:var(--mattone); --border:var(--mattone); }
+  html[data-theme="test-mattone"] { --bg:var(--azzurro); --band:var(--mattone); --fg:var(--azzurro); --border:var(--mattone); }
+  html[data-theme="test-notte"]   { --bg:#000;           --band:var(--mattone); --fg:var(--azzurro); --border:var(--azzurro); }
+  html[data-theme="test-corallo"] { --bg:var(--azzurro); --band:var(--corallo); --fg:#fff;           --border:var(--mattone); }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); overflow: hidden; }
@@ -32,7 +33,7 @@
     position: absolute; left: 0; right: 0;
     background: var(--band); color: var(--fg);
     border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    padding: 0.45em 4vw;
+    padding: 0.4em 4vw;
     transition: opacity .4s;
   }
   #band.pos-bassa { bottom: var(--offset); }
@@ -42,13 +43,23 @@
   #band.idle { opacity: 0; }
   #band.always { opacity: 1; }
 
-  /* Il testo: esattamente N righe, ancorato in basso così si vede la coda */
-  #text {
+  /* Una "traccia" = un flusso di sottotitoli: viewport alto esattamente N righe */
+  .track .vp {
     height: calc(var(--lines) * var(--lh) * 1em);
-    display: flex; align-items: flex-end; overflow: hidden;
+    overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end;
   }
-  #inner { display: block; width: 100%; text-wrap: pretty; }
-  #text span.partial { opacity: .78; }
+  .track .lines { will-change: transform; }
+  .track .ln { white-space: nowrap; height: calc(var(--lh) * 1em); line-height: var(--lh); }
+  .track .p { opacity: .8; }
+  /* Fascia secondaria (es. originale sopra la traduzione): più piccola, separata da una riga della griglia */
+  .track.sec { font-size: calc(var(--sec) * 1em); font-weight: 400; padding-bottom: .35em; margin-bottom: .45em; border-bottom: 1px solid var(--border); }
+  .track.sec .ln { opacity: .85; }
+  .track.sec.off { display: none; }
+  #band.sec-below .track.sec { order: 2; border-bottom: 0; padding-bottom: 0; margin-bottom: 0; border-top: 1px solid var(--border); padding-top: .35em; margin-top: .45em; }
+  #band { display: flex; flex-direction: column; }
+  .track.pri { order: 1; }
+  #band:not(.sec-below) .track.sec { order: 0; }
 
   /* --- pannello impostazioni --- */
   #hint { position: absolute; top: 10px; right: 14px; font: 13px/1.4 system-ui, sans-serif; letter-spacing: 0; color: var(--fg); opacity: .6; transition: opacity 1s; pointer-events: none; }
@@ -56,9 +67,9 @@
   #dot { position: absolute; top: 12px; left: 14px; width: 10px; height: 10px; border-radius: 50%; background: #3ccb7f; opacity: 0; transition: opacity .4s; }
   #dot.on { opacity: .9; }
   #panel {
-    position: absolute; top: 40px; right: 14px; width: 340px; max-height: calc(100% - 60px); overflow: auto;
+    position: absolute; top: 40px; right: 14px; width: 350px; max-height: calc(100% - 60px); overflow: auto;
     background: #1a1d24; color: #e8e9ec; border: 1px solid #2a2f3a; border-radius: 8px; padding: 14px 16px;
-    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 0; display: none;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 0; display: none; z-index: 2;
   }
   #panel.open { display: block; }
   #panel h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
@@ -70,22 +81,26 @@
   #panel .keys { margin-top: 12px; font-size: 12px; color: #8b919e; }
   #panel kbd { background: #111318; border: 1px solid #2a2f3a; border-radius: 4px; padding: 0 5px; font: 11px ui-monospace, monospace; }
   #panel .chk { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  #panel .chk label { margin: 0; text-transform: none; font-size: 14px; color: #e8e9ec; letter-spacing: 0; }
+  #panel small { color: #8b919e; font-size: 12px; display: block; margin-top: 3px; }
 </style>
 </head>
 <body>
 <div id="dot" title="audio in arrivo"></div>
 <div id="hint">S impostazioni · F tutto schermo</div>
-<div id="band" class="pos-bassa idle"><div id="text"><div id="inner"></div></div></div>
+<div id="band" class="pos-bassa idle">
+  <div class="track sec off" id="t2"><div class="vp"><div class="lines"></div></div></div>
+  <div class="track pri" id="t1"><div class="vp"><div class="lines"></div></div></div>
+</div>
 
 <div id="panel">
   <h3>Schermo sottotitoli</h3>
-  <label>Cosa mostrare</label>
-  <select id="s_lang">
-    <option value="it">Traduzione italiana</option>
-    <option value="fr">Traduzione francese</option>
-    <option value="en">Traduzione inglese</option>
-    <option value="orig">Trascrizione originale (lingua parlata)</option>
-  </select>
+  <label>Fascia principale</label>
+  <select id="s_lang" class="chan"></select>
+  <label>Fascia secondaria (più piccola)</label>
+  <select id="s_lang2" class="chan"><option value="none">Nessuna</option></select>
+  <div class="chk"><input type="checkbox" id="s_below"><label for="s_below">Secondaria sotto la principale</label></div>
+  <small>"Automatica IT↔FR" mostra sempre la lingua che non si sta parlando. Esempio di schermo doppio: secondaria = originale, principale = automatica.</small>
   <label>Posizione fascia</label>
   <select id="s_pos"><option value="bassa">Bassa</option><option value="media">Media</option><option value="alta">Alta</option></select>
   <div class="row">
@@ -101,29 +116,50 @@
     <option value="scuro">Neutro scuro</option>
     <option value="chiaro">Neutro chiaro</option>
   </select>
-  <div class="chk"><input type="checkbox" id="s_box"><label for="s_box" style="margin:0;text-transform:none;font-size:14px;color:#e8e9ec">Fascia a riquadro (non a tutta larghezza)</label></div>
-  <div class="chk"><input type="checkbox" id="s_always"><label for="s_always" style="margin:0;text-transform:none;font-size:14px;color:#e8e9ec">Fascia sempre visibile (anche in silenzio)</label></div>
+  <div class="chk"><input type="checkbox" id="s_box"><label for="s_box">Fascia a riquadro (non a tutta larghezza)</label></div>
+  <div class="chk"><input type="checkbox" id="s_always"><label for="s_always">Fascia sempre visibile (anche in silenzio)</label></div>
   <label>Sorgente</label>
-  <select id="s_src"><option value="local">PC operatore (stesso browser)</option><option value="firebase">Relay Firebase</option></select>
+  <select id="s_src"><option value="local">PC operatore (stesso browser)</option><option value="firebase">Relay Firebase (altro dispositivo)</option></select>
   <div class="keys">Tasti: <kbd>S</kbd> pannello · <kbd>F</kbd> tutto schermo · <kbd>↑</kbd><kbd>↓</kbd> sposta la fascia · <kbd>+</kbd><kbd>−</kbd> dimensione · <kbd>C</kbd> cancella</div>
 </div>
 
 <script src="firebase-config.js"></script>
 <script type="module">
 import { initFirebase, subscribe } from './js/relay.js';
+import { Captions } from './js/captions.js';
+
+const CHANNELS = {
+  it:   { label: 'Traduzione italiana',            sources: ['it'] },
+  fr:   { label: 'Traduzione francese',            sources: ['fr'] },
+  en:   { label: 'Traduzione inglese',             sources: ['en'] },
+  auto: { label: 'Traduzione automatica IT↔FR',    sources: ['it', 'fr'] },
+  orig: { label: 'Originale (lingua parlata)',     sources: ['orig'] },
+};
+const IDLE_MS = 6000;   // dopo 6 s di silenzio la fascia sparisce (se non "sempre visibile")
 
 const q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
-const band = $('band'), text = $('text'), dot = $('dot');
+const band = $('band'), dot = $('dot');
+
+for (const sel of document.querySelectorAll('select.chan')) {
+  for (const [k, c] of Object.entries(CHANNELS)) sel.add(new Option(c.label, k));
+}
 
 // --- impostazioni: URL > localStorage > default
-const DEF = { lang: 'it', pos: 'bassa', lines: 2, size: 5.5, theme: 'test-azzurro', box: false, always: false, src: 'local', offset: 8, evento: 'evento-finale' };
-const saved = JSON.parse(localStorage.getItem('schermo') || '{}');
+const DEF = { lang: 'it', lang2: 'none', below: false, pos: 'bassa', lines: 2, size: 5.5, theme: 'test-azzurro', box: false, always: false, src: 'local', offset: 8, evento: 'evento-finale' };
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem('schermo2') || '{}'); } catch { /* ignora */ }
 const S = { ...DEF, ...saved };
 for (const k of Object.keys(DEF)) if (q.has(k)) S[k] = q.get(k);
 S.lines = +S.lines; S.size = +S.size; S.offset = +S.offset;
-S.box = S.box === true || S.box === '1' || S.box === 'true';
-S.always = S.always === true || S.always === '1' || S.always === 'true';
+for (const k of ['box', 'always', 'below']) S[k] = S[k] === true || S[k] === '1' || S[k] === 'true';
+if (!CHANNELS[S.lang]) S.lang = 'it';
+if (S.lang2 !== 'none' && !CHANNELS[S.lang2]) S.lang2 = 'none';
+
+const tracks = {
+  pri: { cap: new Captions($('t1'), () => S.lines), timer: null },
+  sec: { cap: new Captions($('t2'), () => S.lines), timer: null },
+};
 
 function apply() {
   const r = document.documentElement;
@@ -131,70 +167,58 @@ function apply() {
   r.style.setProperty('--size', S.size + 'vh');
   r.style.setProperty('--lines', S.lines);
   r.style.setProperty('--offset', S.offset + 'vh');
-  band.className = `pos-${S.pos}` + (S.box ? ' box' : '') + (S.always ? ' always' : '') + (band.classList.contains('idle') ? ' idle' : '');
-  document.title = `Sottotitoli ${S.lang.toUpperCase()}`;
-  localStorage.setItem('schermo', JSON.stringify(S));
-  $('s_lang').value = S.lang; $('s_pos').value = S.pos; $('s_lines').value = S.lines; $('s_size').value = S.size;
+  const idle = band.classList.contains('idle');
+  band.className = `pos-${S.pos}` + (S.box ? ' box' : '') + (S.always ? ' always' : '') + (S.below ? ' sec-below' : '') + (idle ? ' idle' : '');
+  $('t2').classList.toggle('off', S.lang2 === 'none');
+  document.title = `Sottotitoli ${S.lang.toUpperCase()}${S.lang2 !== 'none' ? ' + ' + S.lang2.toUpperCase() : ''}`;
+  try { localStorage.setItem('schermo2', JSON.stringify(S)); } catch { /* ignora */ }
+  $('s_lang').value = S.lang; $('s_lang2').value = S.lang2; $('s_below').checked = S.below;
+  $('s_pos').value = S.pos; $('s_lines').value = S.lines; $('s_size').value = S.size;
   $('s_theme').value = S.theme; $('s_box').checked = S.box; $('s_always').checked = S.always; $('s_src').value = S.src;
-  render();
+  // il layout dipende da font e larghezza: ricomponi
+  requestAnimationFrame(() => { tracks.pri.cap.invalidate(); tracks.sec.cap.invalidate(); updateIdle(); });
 }
 
-// --- testo scorrevole "da streaming": ultime righe finali + riga in corso, tagliate dalla testa
-let finals = [];       // ultime righe concluse
-let partial = '';      // riga in corso
-let idleTimer = null;
-const IDLE_MS = 6000;  // dopo 6 s di silenzio la fascia sparisce (se non "sempre visibile")
-
-function budget() {
-  // caratteri che stanno in N righe, misurati sul font corrente
-  const c = document.createElement('canvas').getContext('2d');
-  const px = window.innerHeight * S.size / 100;
-  c.font = `700 ${px}px ${getComputedStyle(document.body).fontFamily}`;
-  const sample = 'Il progetto nasce da una collaborazione tra città europee e cittadini ';
-  const avg = c.measureText(sample).width / sample.length;
-  const width = text.clientWidth || window.innerWidth * 0.92;
-  return Math.floor(width / avg) * S.lines;
+function updateIdle() {
+  const empty = tracks.pri.cap.empty && (S.lang2 === 'none' || tracks.sec.cap.empty);
+  band.classList.toggle('idle', empty);
 }
 
-function render() {
-  const max = budget();
-  let s = finals.join(' ');
-  let p = partial;
-  // taglia dalla testa finché non ci sta
-  while ((s + ' ' + p).trim().length > max) {
-    if (s) { const i = s.indexOf(' '); s = i < 0 ? '' : s.slice(i + 1); }
-    else { const i = p.indexOf(' '); if (i < 0) break; p = p.slice(i + 1); }
-  }
-  const inner = $('inner');
-  inner.innerHTML = '';
-  if (s) inner.append(s + (p ? ' ' : ''));
-  if (p) { const sp = document.createElement('span'); sp.className = 'partial'; sp.textContent = p; inner.append(sp); }
-  band.classList.toggle('idle', !s && !p);
-}
-
-function show(t, final) {
-  if (t === '' && !final) { partial = ''; render(); return; } // riga ritirata (filtro echo)
-  if (final) { finals.push(t); if (finals.length > 4) finals.shift(); partial = ''; }
-  else partial = t;
-  render();
+function feed(which, src, text, final) {
+  const t = tracks[which];
+  t.cap.push(src, text, final);
+  clearTimeout(t.timer);
+  t.timer = setTimeout(() => { t.cap.clear(); updateIdle(); }, IDLE_MS);
+  updateIdle();
   dot.classList.add('on'); clearTimeout(dot._t); dot._t = setTimeout(() => dot.classList.remove('on'), 1200);
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => { finals = []; partial = ''; render(); }, IDLE_MS);
+}
+
+function route(src, text, final) {
+  if (CHANNELS[S.lang].sources.includes(src)) feed('pri', src, text, final);
+  if (S.lang2 !== 'none' && CHANNELS[S.lang2].sources.includes(src)) feed('sec', src, text, final);
 }
 
 // --- sorgente
-let unsub = null;
+let unsubs = [];
 function connect() {
-  if (unsub) { unsub(); unsub = null; }
+  unsubs.forEach((u) => u()); unsubs = [];
+  for (const t of Object.values(tracks)) { clearTimeout(t.timer); t.cap.clear(); }
+  updateIdle();
+  const needed = new Set([...CHANNELS[S.lang].sources, ...(S.lang2 !== 'none' ? CHANNELS[S.lang2].sources : [])]);
   if (S.src === 'firebase') {
     initFirebase().then((db) => {
-      if (!db) { show('Relay Firebase non configurato', true); return; }
-      unsub = subscribe(S.evento, S.lang, { onCurrent: (t) => { if (t) show(t, false); }, onLine: (l) => show(l.text, true) });
-    }).catch((e) => show('Firebase: ' + e.message, true));
+      if (!db) { route([...needed][0], 'Relay Firebase non configurato', true); return; }
+      for (const src of needed) {
+        unsubs.push(subscribe(S.evento, src, {
+          onCurrent: (t) => route(src, t, false),
+          onLine: (l) => route(src, l.text, true),
+        }, { history: 0 }));
+      }
+    }).catch((e) => route([...needed][0], 'Firebase: ' + e.message, true));
   } else {
     const bc = new BroadcastChannel('interprete-live');
-    bc.onmessage = (e) => { if (e.data.lang === S.lang) show(e.data.text, e.data.final); };
-    unsub = () => bc.close();
+    bc.onmessage = (e) => { if (needed.has(e.data.lang)) route(e.data.lang, e.data.text, e.data.final); };
+    unsubs.push(() => bc.close());
   }
 }
 
@@ -202,9 +226,11 @@ function connect() {
 const panel = $('panel');
 const bind = (id, key, conv = (v) => v, reconnect = false) => $(id).addEventListener('change', (e) => {
   S[key] = conv(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
-  finals = []; partial = ''; apply(); if (reconnect) connect();
+  apply(); if (reconnect) connect();
 });
 bind('s_lang', 'lang', (v) => v, true);
+bind('s_lang2', 'lang2', (v) => v, true);
+bind('s_below', 'below');
 bind('s_pos', 'pos');
 bind('s_lines', 'lines', Number);
 bind('s_size', 'size', Number);
@@ -221,12 +247,13 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
   else if (k === '+' || k === '=') { S.size = Math.min(12, S.size + 0.25); apply(); }
   else if (k === '-') { S.size = Math.max(2.5, S.size - 0.25); apply(); }
-  else if (k === 'arrowup') { S.offset = Math.min(60, S.offset + (S.pos === 'alta' ? -1 : 1)); apply(); }
-  else if (k === 'arrowdown') { S.offset = Math.max(0, S.offset + (S.pos === 'alta' ? 1 : -1)); apply(); }
-  else if (k === 'c') { finals = []; partial = ''; render(); }
+  else if (k === 'arrowup') { S.offset = Math.max(0, Math.min(60, S.offset + (S.pos === 'alta' ? -1 : 1))); apply(); }
+  else if (k === 'arrowdown') { S.offset = Math.max(0, Math.min(60, S.offset + (S.pos === 'alta' ? 1 : -1))); apply(); }
+  else if (k === 'c') { for (const t of Object.values(tracks)) t.cap.clear(); updateIdle(); }
   else if (k === 'escape') panel.classList.remove('open');
 });
-window.addEventListener('resize', render);
+window.addEventListener('resize', () => { tracks.pri.cap.invalidate(); tracks.sec.cap.invalidate(); });
+document.fonts && document.fonts.ready.then(() => { tracks.pri.cap.invalidate(); tracks.sec.cap.invalidate(); });
 document.addEventListener('mousemove', () => { const h = $('hint'); h.classList.remove('hide'); clearTimeout(h._t); h._t = setTimeout(() => h.classList.add('hide'), 3000); });
 setTimeout(() => $('hint').classList.add('hide'), 6000);
 
