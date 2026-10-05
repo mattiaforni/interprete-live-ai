@@ -90,7 +90,8 @@ Dopo l'evento basta disattivare il metodo Anonimo (o cancellare il progetto).
 - Il modello è in *preview*: sul forum Google sono segnalati casi di output in inglese anziché nella lingua configurata e troncature delle ultime parole. La prova generale serve a vedere se ci capitano.
 - Latenza tipica 1–3 secondi.
 - Voci sovrapposte o chiacchiericcio di fondo degradano molto la qualità: un solo microfono aperto alla volta.
-- Con "echo lingua target" spento il modello a volte ripete comunque l'originale invece di tacere: il "filtro echo" della pagina operatore scarta le righe che coincidono con la trascrizione originale (confronto per parole).
+- Con "echo lingua target" spento il modello a volte ripete comunque l'originale invece di tacere. Il "filtro lingua parlata" (`js/router.js`) riconosce la lingua dalla trascrizione originale e zittisce il canale in quella lingua; in più scarta le righe che coincidono con l'originale. Lo stesso modulo calcola il canale "automatico IT↔FR", alimentato da una sola sessione alla volta. Una riga tradotta compare da 3 parole in su (circa mezzo secondo in più), così non appare e scompare. La lingua riconosciuta è mostrata in alto nella pagina operatore.
+- Le pagine mostrano il numero di versione (in alto a destra nell'operatore, nel suggerimento dello schermo): se non corrisponde all'ultima, ricaricare con Ctrl+Shift+R.
 - Nessun glossario: nomi propri e sigle possono uscire storpiati.
 - La connessione WebSocket dura ~10 minuti; la pagina riconnette da sola con l'handle di sessione. Se "Ripresa sessione" o "Compressione contesto" dessero errore col modello di traduzione, disattivarle nelle opzioni avanzate e riavviare.
 - Piano B già pronto: Google Meet con sottotitoli tradotti, oppure LiveVoice.
@@ -105,4 +106,5 @@ js/audio.js         cattura microfono → PCM 16 kHz
 js/live.js          sessione Live API (WebSocket, trascrizioni, riconnessione)
 js/relay.js         scrittura/lettura Firebase
 js/captions.js      impaginazione dei sottotitoli roll-up
+js/router.js        lingua parlata, filtro eco, canale automatico
 ```

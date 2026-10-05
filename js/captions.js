@@ -37,6 +37,12 @@ export class Captions {
   /** text '' con final=false ritira la riga in corso di quella sorgente. */
   push(src, text, final) {
     const now = Date.now();
+    if (final && text === '\n') {             // a capo esplicito (cambio di lingua)
+      const last = this.committed[this.committed.length - 1];
+      if (this.committed.length && last !== '\n') this.committed.push('\n');
+      this.render();
+      return;
+    }
     if (!final && text === '') {
       this.partials.delete(src);
     } else {

@@ -22,9 +22,9 @@
 <body>
 <header><b id="title">Sous-titres en direct</b><button class="tab" data-lang="fr">FR</button><button class="tab" data-lang="it">IT</button><button class="tab" data-lang="en">EN</button></header>
 <main id="main"><div id="msg">Connexion…</div></main>
-<script src="firebase-config.js"></script>
+<script src="firebase-config.js?v=8"></script>
 <script type="module">
-import { initFirebase, subscribe } from './js/relay.js';
+import { initFirebase, subscribe } from './js/relay.js?v=8';
 
 const q = new URLSearchParams(location.search);
 const evento = q.get('evento') || 'evento-finale';
@@ -51,7 +51,7 @@ function start() {
   if (unsub) unsub();
   unsub = subscribe(evento, lang, {
     onCurrent: (t) => { if (t) show(t, false); else if (partialEl) { partialEl.remove(); partialEl = null; } },
-    onLine: (l) => show(l.text, true),
+    onLine: (l) => { if (l.text && l.text.trim()) show(l.text, true); },
   });
 }
 

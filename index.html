@@ -45,7 +45,9 @@
 <header>
   <h1>Interprete live — operatore</h1>
   <span id="status"><span class="dot"></span>fermo</span>
+  <span class="stats" id="spoken"></span>
   <span class="stats" id="stats"></span>
+  <span class="stats" style="margin-left:auto">v8</span>
 </header>
 <main>
   <aside>
@@ -93,8 +95,8 @@
     <label>Avanzate</label>
     <span class="chk"><input type="checkbox" id="optResume" checked> <label for="optResume" style="margin:0;text-transform:none">Ripresa sessione</label></span>
     <span class="chk"><input type="checkbox" id="optCompress" checked> <label for="optCompress" style="margin:0;text-transform:none">Compressione contesto</label></span>
-    <span class="chk"><input type="checkbox" id="optEchoFilter" checked> <label for="optEchoFilter" style="margin:0;text-transform:none">Filtro echo</label></span>
-    <small class="hint">Scarta le "traduzioni" che ripetono l'originale (capita col modello in preview).</small>
+    <span class="chk"><input type="checkbox" id="optEchoFilter" checked> <label for="optEchoFilter" style="margin:0;text-transform:none">Filtro lingua parlata</label></span>
+    <small class="hint">Riconosce la lingua parlata e zittisce il canale in quella lingua (il modello in preview a volte ripete l'originale). Alimenta il canale "automatico IT↔FR".</small>
     <span class="chk"><input type="checkbox" id="optEcho"> <label for="optEcho" style="margin:0;text-transform:none">Echo lingua target</label></span>
     <small class="hint">Spento: ogni schermo mostra solo le traduzioni (lo schermo IT resta fermo quando parla un italiano). Acceso: trascrive anche chi parla già nella lingua target, utile per accessibilità.</small>
   </aside>
@@ -107,11 +109,12 @@
   </section>
 </main>
 
-<script src="firebase-config.js"></script>
+<script src="firebase-config.js?v=8"></script>
 <script type="module">
-import { MicCapture, listAudioInputs } from './js/audio.js';
-import { LiveSession } from './js/live.js';
-import { initFirebase, Relay } from './js/relay.js';
+import { MicCapture, listAudioInputs } from './js/audio.js?v=8';
+import { LiveSession } from './js/live.js?v=8';
+import { initFirebase, Relay } from './js/relay.js?v=8';
+import { Router } from './js/router.js?v=8';
 
 const $ = (id) => document.getElementById(id);
 const LANG_NAMES = { it: 'Italiano', fr: 'Français', en: 'English' };
@@ -195,17 +198,6 @@ function dropPartial(lang) {
   if (p) { p.remove(); partials[lang] = null; }
 }
 
-// --- filtro echo: confronto per parole (≥ 4 lettere) tra traduzione e originale
-const inBuf = {};
-const shown = {};
-const words = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z]{4,}/g) || [];
-function isEcho(out, inText) {
-  const o = words(out), i = new Set(words(inText));
-  if (o.length < 3 || i.size < 3) return false;
-  const hits = o.filter((w) => i.has(w)).length;
-  return hits / o.length >= 0.6;
-}
-
 // --- avvio / stop
 $('start').onclick = async () => {
   const apiKey = $('apiKey').value.trim();
@@ -216,7 +208,7 @@ $('start').onclick = async () => {
   $('start').disabled = true;
   $('cols').querySelectorAll('.col:not([data-lang="orig"])').forEach((c) => c.remove());
   Object.keys(partials).forEach((k) => delete partials[k]);
-  Object.keys(inBuf).forEach((k) => delete inBuf[k]); Object.keys(shown).forEach((k) => delete shown[k]);
+  $('spoken').textContent = '';
   document.querySelectorAll('.lines').forEach((l) => (l.innerHTML = ''));
 
   try {
@@ -225,6 +217,20 @@ $('start').onclick = async () => {
     $('relayHint').textContent = db ? `Relay Firebase attivo: evento "${relay.eventId}"` : 'Relay Firebase: non configurato (vedi firebase-config.js).';
     if (db) log('Firebase: accesso anonimo ok, relay attivo');
   } catch (e) { log('Firebase: ' + e.message + ' — relay disattivato'); relay = new Relay(); }
+
+  // Il router decide quale sessione alimenta quale canale (vedi js/router.js).
+  const router = new Router({
+    langs,
+    echo: () => $('optEcho').checked,
+    filter: () => $('optEchoFilter').checked,
+    log,
+    onSpoken: (l) => { $('spoken').innerHTML = `lingua parlata: <b>${l.toUpperCase()}</b>`; },
+    emit: (ch, text, final) => {
+      if (ch !== 'auto') { if (!final && text === '') dropPartial(ch); else render(ch, text, final); }
+      bc.postMessage({ lang: ch, text, final });
+      if (final) relay.final(ch, text); else relay.partial(ch, text);
+    },
+  });
 
   sessions = langs.map((lang) => {
     ensureColumn(lang);
@@ -242,26 +248,8 @@ $('start').onclick = async () => {
         else setStatus('connecting', 'connessione…');
       },
       onText: (kind, text, final) => {
-        if (kind === 'in') {
-          inBuf[lang] = text; // serve al filtro echo
-          // L'originale arriva da ogni sessione: mostriamo solo quella della prima lingua per evitare doppioni.
-          if (lang !== langs[0]) return;
-          render('orig', text, final);
-          bc.postMessage({ lang: 'orig', text, final });
-          if (final) relay.final('orig', text); else relay.partial('orig', text);
-          return;
-        }
-        // Filtro echo: se la "traduzione" coincide con l'originale (il modello ha ripetuto
-        // la lingua di partenza), la scartiamo e ritiriamo l'eventuale riga parziale già mostrata.
-        if ($('optEchoFilter').checked && isEcho(text, inBuf[lang])) {
-          if (shown[lang]) { dropPartial(lang); bc.postMessage({ lang, text: '', final: false }); relay.partial(lang, ''); shown[lang] = false; }
-          if (final) log(`[${lang}] scartata ripetizione dell'originale`);
-          return;
-        }
-        shown[lang] = !final;
-        render(lang, text, final);
-        bc.postMessage({ lang, text, final });
-        if (final) relay.final(lang, text); else relay.partial(lang, text);
+        if (kind === 'in') router.onInput(lang, text, final);
+        else router.onOutput(lang, text, final);
       },
     });
   });
@@ -306,9 +294,9 @@ function updateStats() {
 
 // --- viste
 const base = location.href.replace(/[^/]*$/, '');
-$('openScreenIt').onclick = () => window.open(base + 'schermo.html?lang=it', 'schermo_it', 'width=1280,height=720');
-$('openScreenFr').onclick = () => window.open(base + 'schermo.html?lang=fr', 'schermo_fr', 'width=1280,height=720');
-$('openScreenDual').onclick = () => window.open(base + 'schermo.html?lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
+$('openScreenIt').onclick = () => window.open(base + 'schermo.html?v=8&lang=it', 'schermo_it', 'width=1280,height=720');
+$('openScreenFr').onclick = () => window.open(base + 'schermo.html?v=8&lang=fr', 'schermo_fr', 'width=1280,height=720');
+$('openScreenDual').onclick = () => window.open(base + 'schermo.html?v=8&lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
 $('openPhone').onclick = () => window.open(base + `telefono.html?evento=${encodeURIComponent($('eventId').value.trim())}&lang=fr`, '_blank');
 
 window.addEventListener('beforeunload', (e) => { if (sessions.length) { e.preventDefault(); e.returnValue = ''; } });

@@ -6,7 +6,7 @@
 // Gestisce: riconnessione con session resumption (la connessione dura ~10 min),
 // goAway, compressione del contesto per sessioni lunghe, log degli errori.
 
-import { int16ToBase64 } from './audio.js';
+import { int16ToBase64 } from './audio.js?v=8';
 
 const WS_BASE = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
 
