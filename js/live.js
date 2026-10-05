@@ -53,16 +53,21 @@ export class LiveSession {
 
     ws.onopen = () => {
       this.openedAt = Date.now();
+      // Nel protocollo WebSocket grezzo le trascrizioni stanno a livello setup,
+      // translationConfig dentro generationConfig (lo schema dell'SDK li appiattisce).
       const generationConfig = {
         responseModalities: ['AUDIO'],
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
         translationConfig: {
           targetLanguageCode: this.o.target,
           echoTargetLanguage: !!this.o.echo,
         },
       };
-      const setup = { model: `models/${this.o.model}`, generationConfig };
+      const setup = {
+        model: `models/${this.o.model}`,
+        generationConfig,
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+      };
       if (this.o.resumption) setup.sessionResumption = this.handle ? { handle: this.handle } : {};
       if (this.o.compression) setup.contextWindowCompression = { slidingWindow: {} };
       ws.send(JSON.stringify({ setup }));
