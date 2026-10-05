@@ -50,7 +50,7 @@ function start() {
   main.innerHTML = '<div id="msg">…</div>'; partialEl = null;
   if (unsub) unsub();
   unsub = subscribe(evento, lang, {
-    onCurrent: (t) => { if (t) show(t, false); },
+    onCurrent: (t) => { if (t) show(t, false); else if (partialEl) { partialEl.remove(); partialEl = null; } },
     onLine: (l) => show(l.text, true),
   });
 }

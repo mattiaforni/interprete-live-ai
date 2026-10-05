@@ -92,6 +92,8 @@
     <label>Avanzate</label>
     <span class="chk"><input type="checkbox" id="optResume" checked> <label for="optResume" style="margin:0;text-transform:none">Ripresa sessione</label></span>
     <span class="chk"><input type="checkbox" id="optCompress" checked> <label for="optCompress" style="margin:0;text-transform:none">Compressione contesto</label></span>
+    <span class="chk"><input type="checkbox" id="optEchoFilter" checked> <label for="optEchoFilter" style="margin:0;text-transform:none">Filtro echo</label></span>
+    <small class="hint">Scarta le "traduzioni" che ripetono l'originale (capita col modello in preview).</small>
     <span class="chk"><input type="checkbox" id="optEcho"> <label for="optEcho" style="margin:0;text-transform:none">Echo lingua target</label></span>
     <small class="hint">Spento: ogni schermo mostra solo le traduzioni (lo schermo IT resta fermo quando parla un italiano). Acceso: trascrive anche chi parla già nella lingua target, utile per accessibilità.</small>
   </aside>
@@ -187,6 +189,22 @@ function render(lang, text, final) {
   box.scrollTop = box.scrollHeight;
 }
 
+function dropPartial(lang) {
+  const p = partials[lang];
+  if (p) { p.remove(); partials[lang] = null; }
+}
+
+// --- filtro echo: confronto per parole (≥ 4 lettere) tra traduzione e originale
+const inBuf = {};
+const shown = {};
+const words = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z]{4,}/g) || [];
+function isEcho(out, inText) {
+  const o = words(out), i = new Set(words(inText));
+  if (o.length < 3 || i.size < 3) return false;
+  const hits = o.filter((w) => i.has(w)).length;
+  return hits / o.length >= 0.6;
+}
+
 // --- avvio / stop
 $('start').onclick = async () => {
   const apiKey = $('apiKey').value.trim();
@@ -197,6 +215,7 @@ $('start').onclick = async () => {
   $('start').disabled = true;
   $('cols').querySelectorAll('.col:not([data-lang="orig"])').forEach((c) => c.remove());
   Object.keys(partials).forEach((k) => delete partials[k]);
+  Object.keys(inBuf).forEach((k) => delete inBuf[k]); Object.keys(shown).forEach((k) => delete shown[k]);
   document.querySelectorAll('.lines').forEach((l) => (l.innerHTML = ''));
 
   try {
@@ -223,12 +242,21 @@ $('start').onclick = async () => {
       },
       onText: (kind, text, final) => {
         if (kind === 'in') {
+          inBuf[lang] = text; // serve al filtro echo
           // L'originale arriva da ogni sessione: mostriamo solo quella della prima lingua per evitare doppioni.
           if (lang !== langs[0]) return;
           render('orig', text, final);
           bc.postMessage({ lang: 'orig', text, final });
           return;
         }
+        // Filtro echo: se la "traduzione" coincide con l'originale (il modello ha ripetuto
+        // la lingua di partenza), la scartiamo e ritiriamo l'eventuale riga parziale già mostrata.
+        if ($('optEchoFilter').checked && isEcho(text, inBuf[lang])) {
+          if (shown[lang]) { dropPartial(lang); bc.postMessage({ lang, text: '', final: false }); relay.partial(lang, ''); shown[lang] = false; }
+          if (final) log(`[${lang}] scartata ripetizione dell'originale`);
+          return;
+        }
+        shown[lang] = !final;
         render(lang, text, final);
         bc.postMessage({ lang, text, final });
         if (final) relay.final(lang, text); else relay.partial(lang, text);

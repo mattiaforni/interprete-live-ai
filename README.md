@@ -73,7 +73,7 @@ Dopo l'evento basta disattivare il metodo Anonimo (o cancellare il progetto).
 ## Il giorno dell'evento
 1. Aprire `index.html` su Chrome, incollare la chiave, scegliere l'ingresso audio e le lingue.
 2. **Avvia**. Attendere che tutte le sessioni siano verdi ("in ascolto").
-3. **Schermo IT** → trascinare la finestra sul proiettore → tasto `F`. Tasti: `+`/`−` dimensione, `T` tema chiaro/scuro, `L` fascia bassa, `1`–`6` numero di righe, `C` cancella.
+3. **Schermo IT** → trascinare la finestra sul proiettore → tasto `F` per il tutto schermo, `S` per il pannello impostazioni: cosa mostrare (traduzione IT/FR/EN o originale), posizione della fascia (bassa/media/alta, frecce ↑↓ per regolare), righe visibili (1–3), dimensione, tema (varianti TEST azzurro/mattone/corallo o neutro), fascia a riquadro o a tutta larghezza, fascia sempre visibile o solo quando c'è parlato. Le impostazioni restano salvate nel browser e si possono passare nell'URL (`?lang=it&pos=alta&lines=2&theme=test-mattone`).
 4. A fine intervento **Ferma**: i minuti si pagano finché le sessioni sono aperte.
 
 ## Prova generale (da fare prima)
@@ -86,6 +86,7 @@ Dopo l'evento basta disattivare il metodo Anonimo (o cancellare il progetto).
 - Il modello è in *preview*: sul forum Google sono segnalati casi di output in inglese anziché nella lingua configurata e troncature delle ultime parole. La prova generale serve a vedere se ci capitano.
 - Latenza tipica 1–3 secondi.
 - Voci sovrapposte o chiacchiericcio di fondo degradano molto la qualità: un solo microfono aperto alla volta.
+- Con "echo lingua target" spento il modello a volte ripete comunque l'originale invece di tacere: il "filtro echo" della pagina operatore scarta le righe che coincidono con la trascrizione originale (confronto per parole).
 - Nessun glossario: nomi propri e sigle possono uscire storpiati.
 - La connessione WebSocket dura ~10 minuti; la pagina riconnette da sola con l'handle di sessione. Se "Ripresa sessione" o "Compressione contesto" dessero errore col modello di traduzione, disattivarle nelle opzioni avanzate e riavviare.
 - Piano B già pronto: Google Meet con sottotitoli tradotti, oppure LiveVoice.

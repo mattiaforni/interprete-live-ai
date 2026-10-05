@@ -50,7 +50,7 @@ export class Relay {
   partial(lang, text) {
     if (!this.enabled) return;
     const now = Date.now();
-    if (now - this.lastPartial < 250) return;
+    if (text !== '' && now - this.lastPartial < 250) return;
     this.lastPartial = now;
     this.base(lang).child('current').set({ text, t: now });
   }
