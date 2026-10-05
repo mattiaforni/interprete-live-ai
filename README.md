@@ -73,7 +73,11 @@ Dopo l'evento basta disattivare il metodo Anonimo (o cancellare il progetto).
 ## Il giorno dell'evento
 1. Aprire `index.html` su Chrome, incollare la chiave, scegliere l'ingresso audio e le lingue.
 2. **Avvia**. Attendere che tutte le sessioni siano verdi ("in ascolto").
-3. **Schermo IT** → trascinare la finestra sul proiettore → tasto `F` per il tutto schermo, `S` per il pannello impostazioni: cosa mostrare (traduzione IT/FR/EN o originale), posizione della fascia (bassa/media/alta, frecce ↑↓ per regolare), righe visibili (1–3), dimensione, tema (varianti TEST azzurro/mattone/corallo o neutro), fascia a riquadro o a tutta larghezza, fascia sempre visibile o solo quando c'è parlato. Le impostazioni restano salvate nel browser e si possono passare nell'URL (`?lang=it&pos=alta&lines=2&theme=test-mattone`).
+3. **Schermo IT** (o **Schermo doppio**) → trascinare la finestra sul proiettore → `F` tutto schermo, `S` pannello impostazioni:
+   - **Fascia principale / secondaria**: traduzione IT, FR, EN, *automatica IT↔FR* (mostra sempre la lingua che non si sta parlando) oppure *originale* (lingua parlata). La secondaria è più piccola, sopra o sotto. Schermo doppio tipico: secondaria = originale, principale = automatica.
+   - **Posizione** bassa/media/alta (frecce ↑↓ per regolare a vista), **righe** 1–3, **dimensione**, **tema** (varianti TEST azzurro/mattone/corallo o neutro), fascia a riquadro o a tutta larghezza, sempre visibile o solo quando c'è parlato.
+   - Sottotitoli "roll-up" come Meet: le parole restano dove sono scritte, le righe si riempiono e quando il riquadro è pieno tutto sale di una riga. Dopo una pausa il nuovo intervento parte a capo.
+   - Le impostazioni restano nel browser e si possono fissare nell'URL, es. `schermo.html?lang=auto&lang2=orig&theme=test-mattone&pos=alta&lines=2`.
 4. A fine intervento **Ferma**: i minuti si pagano finché le sessioni sono aperte.
 
 ## Prova generale (da fare prima)
@@ -100,4 +104,5 @@ firebase-config.js  config Firebase (null = relay spento)
 js/audio.js         cattura microfono → PCM 16 kHz
 js/live.js          sessione Live API (WebSocket, trascrizioni, riconnessione)
 js/relay.js         scrittura/lettura Firebase
+js/captions.js      impaginazione dei sottotitoli roll-up
 ```
