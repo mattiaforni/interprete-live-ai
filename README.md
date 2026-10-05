@@ -16,10 +16,10 @@ e la trascrizione testuale della traduzione, che diventa il sottotitolo. Lo sche
 il testo via `BroadcastChannel` (stesso browser, nessuna rete); i telefoni lo ricevono via
 Firebase Realtime Database.
 
-Con "echo lingua target" attivo, chi parla già nella lingua di destinazione viene
-trascritto tale e quale: la sessione IT mostra l'italiano quando parla un italiano e la
-traduzione quando parla un francese; la sessione FR fa il contrario. Così la direzione
-si inverte da sola.
+Ogni schermo mostra solo le traduzioni: la sessione IT traduce i francesi e resta muta
+quando parla un italiano (che il pubblico capisce già); la sessione FR fa il contrario.
+La direzione si inverte da sola. L'opzione "echo lingua target" (spenta di default) fa
+trascrivere anche chi parla già nella lingua di destinazione, utile per l'accessibilità.
 
 ## Setup
 

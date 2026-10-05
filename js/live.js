@@ -26,7 +26,7 @@ export class LiveSession {
    * @param {(msg:string)=>void} [o.onLog]
    */
   constructor(o) {
-    this.o = { model: DEFAULT_MODEL, echo: true, resumption: true, compression: true, ...o };
+    this.o = { model: DEFAULT_MODEL, echo: false, resumption: true, compression: true, ...o };
     this.ws = null;
     this.ready = false;
     this.closing = false;
