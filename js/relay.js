@@ -16,14 +16,23 @@ async function loadScript(src) {
   });
 }
 
-export async function initFirebase() {
+/**
+ * @param {{auth?: boolean}} [opts]  auth: true → accesso anonimo, necessario per scrivere
+ *   (le regole del database permettono la scrittura solo a utenti autenticati).
+ */
+export async function initFirebase(opts = {}) {
   const cfg = window.FIREBASE_CONFIG;
   if (!cfg) return null;
   if (!window.firebase) {
     await loadScript(`${SDK}/firebase-app-compat.js`);
     await loadScript(`${SDK}/firebase-database-compat.js`);
+    if (opts.auth) await loadScript(`${SDK}/firebase-auth-compat.js`);
   }
   if (!window.firebase.apps.length) window.firebase.initializeApp(cfg);
+  if (opts.auth) {
+    const auth = window.firebase.auth();
+    if (!auth.currentUser) await auth.signInAnonymously();
+  }
   db = window.firebase.database();
   return db;
 }

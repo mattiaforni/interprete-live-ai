@@ -200,10 +200,11 @@ $('start').onclick = async () => {
   document.querySelectorAll('.lines').forEach((l) => (l.innerHTML = ''));
 
   try {
-    const db = await initFirebase();
+    const db = await initFirebase({ auth: true });
     relay = new Relay($('eventId').value.trim() || 'evento');
     $('relayHint').textContent = db ? `Relay Firebase attivo: evento "${relay.eventId}"` : 'Relay Firebase: non configurato (vedi firebase-config.js).';
-  } catch (e) { log('Firebase: ' + e.message); relay = new Relay(); }
+    if (db) log('Firebase: accesso anonimo ok, relay attivo');
+  } catch (e) { log('Firebase: ' + e.message + ' — relay disattivato'); relay = new Relay(); }
 
   sessions = langs.map((lang) => {
     ensureColumn(lang);

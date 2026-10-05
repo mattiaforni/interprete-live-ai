@@ -41,28 +41,34 @@ Settings → Pages → *Deploy from a branch* → `main` / root. L'URL sarà
 - Il VU-meter deve muoversi bene senza stare sempre al massimo.
 
 ### 4. Relay Firebase (solo per i telefoni degli ospiti)
-1. [Firebase console](https://console.firebase.google.com) → nuovo progetto → **Realtime Database** (regione Europa) → crea.
-2. *Impostazioni progetto → Le tue app → Web*: copia la configurazione SDK in `firebase-config.js`.
-3. Regole del database, per il giorno dell'evento:
+1. [Firebase console](https://console.firebase.google.com) → nuovo progetto (Analytics non serve).
+2. **Build → Realtime Database** → crea, regione Europa (`europe-west1`), **modalità di blocco**.
+3. **Build → Authentication** → *Inizia* → *Metodo di accesso* → **Anonimo** → Abilita.
+   La pagina operatore si autentica da sola all'avvio; i telefoni leggono senza login.
+4. Realtime Database → tab **Regole**, sostituisci tutto e pubblica:
    ```json
    {
      "rules": {
        "eventi": {
          "$evento": {
            ".read": true,
-           ".write": true,
+           ".write": "auth != null",
            "$lang": {
-             "current": { ".validate": "newData.hasChildren(['text','t']) && newData.child('text').val().length < 2000" },
-             "lines": { "$id": { ".validate": "newData.hasChildren(['text','t']) && newData.child('text').val().length < 2000" } }
+             "current": { ".validate": "newData.hasChildren(['text','t']) && newData.child('text').isString() && newData.child('text').val().length < 2000" },
+             "lines": { "$id": { ".validate": "newData.hasChildren(['text','t']) && newData.child('text').isString() && newData.child('text').val().length < 2000" } }
            }
          }
        }
      }
    }
    ```
-   Scrittura aperta ma validata: chi conosce l'URL potrebbe scrivere righe. Per un evento
-   di un giorno è un rischio accettabile; rimettere `".write": false` subito dopo.
-4. Stampare un QR verso `https://…/telefono.html?evento=evento-finale&lang=fr`.
+   Lettura pubblica (serve ai telefoni), scrittura solo da utenti autenticati, testo validato.
+5. *Impostazioni progetto → Le tue app → Web* (`</>`): registra l'app e copia l'oggetto `firebaseConfig` in `firebase-config.js`.
+   Non è un segreto: identifica il progetto, la protezione sta nelle regole e in Authentication.
+6. Authentication → *Impostazioni → Domini autorizzati*: aggiungi `mattiaforni.github.io` se non c'è.
+7. Stampare un QR verso `https://…/telefono.html?evento=evento-finale&lang=fr`.
+
+Dopo l'evento basta disattivare il metodo Anonimo (o cancellare il progetto).
 
 ## Il giorno dell'evento
 1. Aprire `index.html` su Chrome, incollare la chiave, scegliere l'ingresso audio e le lingue.
