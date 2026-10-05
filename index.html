@@ -47,7 +47,7 @@
   <span id="status"><span class="dot"></span>fermo</span>
   <span class="stats" id="spoken"></span>
   <span class="stats" id="stats"></span>
-  <span class="stats" style="margin-left:auto">v9</span>
+  <span class="stats" style="margin-left:auto">v10</span>
 </header>
 <main>
   <aside>
@@ -109,12 +109,12 @@
   </section>
 </main>
 
-<script src="firebase-config.js?v=9"></script>
+<script src="firebase-config.js?v=10"></script>
 <script type="module">
-import { MicCapture, listAudioInputs } from './js/audio.js?v=9';
-import { LiveSession } from './js/live.js?v=9';
-import { initFirebase, Relay } from './js/relay.js?v=9';
-import { Router } from './js/router.js?v=9';
+import { MicCapture, listAudioInputs } from './js/audio.js?v=10';
+import { LiveSession } from './js/live.js?v=10';
+import { initFirebase, Relay } from './js/relay.js?v=10';
+import { Router } from './js/router.js?v=10';
 
 const $ = (id) => document.getElementById(id);
 const LANG_NAMES = { it: 'Italiano', fr: 'Français', en: 'English' };
@@ -302,9 +302,9 @@ function updateStats() {
 
 // --- viste
 const base = location.href.replace(/[^/]*$/, '');
-$('openScreenIt').onclick = () => window.open(base + 'schermo.html?v=9&lang=it', 'schermo_it', 'width=1280,height=720');
-$('openScreenFr').onclick = () => window.open(base + 'schermo.html?v=9&lang=fr', 'schermo_fr', 'width=1280,height=720');
-$('openScreenDual').onclick = () => window.open(base + 'schermo.html?v=9&lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
+$('openScreenIt').onclick = () => window.open(base + 'schermo.html?v=10&lang=it', 'schermo_it', 'width=1280,height=720');
+$('openScreenFr').onclick = () => window.open(base + 'schermo.html?v=10&lang=fr', 'schermo_fr', 'width=1280,height=720');
+$('openScreenDual').onclick = () => window.open(base + 'schermo.html?v=10&lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
 $('openPhone').onclick = () => window.open(base + `telefono.html?evento=${encodeURIComponent($('eventId').value.trim())}&lang=fr`, '_blank');
 
 window.addEventListener('beforeunload', (e) => { if (sessions.length) { e.preventDefault(); e.returnValue = ''; } });

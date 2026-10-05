@@ -3,68 +3,166 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#111318">
-<title>Sous-titres en direct</title>
+<meta name="theme-color" content="#D3EBF1">
+<title>Sous-titres en direct — TEST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cossette+Texte:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #111318; --panel: #1a1d24; --line: #2a2f3a; --fg: #e8e9ec; --muted: #8b919e; --accent: #4f8cff; }
+  :root {
+    --azzurro: #D3EBF1; --mattone: #61180C; --corallo: #E95D6D;
+    --font: "Cossette Texte", Tahoma, "Trebuchet MS", sans-serif;
+    --fs: 26px; --lh: 1.25;
+  }
+  html[data-theme="giorno"] { --bg: var(--azzurro); --fg: var(--mattone); --line: var(--mattone); --cell: var(--azzurro); --on-bg: var(--mattone); --on-fg: var(--azzurro); }
+  html[data-theme="notte"]  { --bg: var(--mattone); --fg: var(--azzurro); --line: var(--azzurro); --cell: var(--mattone); --on-bg: var(--azzurro); --on-fg: var(--mattone); }
+
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 19px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; align-items: center; gap: 10px; padding-top: max(10px, env(safe-area-inset-top)); }
-  header b { flex: 1; font-size: 15px; }
-  .tab { border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 6px 12px; border-radius: 999px; font-size: 14px; }
-  .tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  main { padding: 12px 16px 40vh; }
-  main p { margin: 0 0 12px; }
-  main p.partial { color: var(--muted); }
-  #msg { color: var(--muted); font-size: 14px; padding: 16px; text-align: center; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: var(--font); letter-spacing: -0.3px;
+    display: flex; flex-direction: column;
+    height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* Griglia: ogni fascia è bordata sotto, ogni cella a destra (come testbologna.com) */
+  .fascia { display: flex; border-bottom: 1px solid var(--line); }
+  .cella { padding: 12px 14px; border-right: 1px solid var(--line); display: flex; align-items: center; }
+  .cella:last-child { border-right: 0; }
+  .logo { font-weight: 700; font-size: 26px; letter-spacing: -1.5px; text-transform: uppercase; }
+  .titolo { flex: 1; font-size: 15px; line-height: 1.15; }
+  .stato { gap: 7px; font-size: 13px; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+  .stato i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; opacity: .35; transition: opacity .3s, background .3s; }
+  .stato.live i { opacity: 1; background: var(--corallo); }
+
+  /* Schede lingua: celle piene, la selezionata invertita */
+  .tabs .cella { flex: 1; justify-content: center; padding: 0; }
+  .tabs button {
+    all: unset; box-sizing: border-box; width: 100%; padding: 11px 0; text-align: center; cursor: pointer;
+    font: 700 15px var(--font); text-transform: uppercase; letter-spacing: -0.3px; color: var(--fg);
+  }
+  .tabs button[aria-pressed="true"] { background: var(--on-bg); color: var(--on-fg); }
+
+  /* Sottotitoli: occupano tutto lo spazio, ancorati in basso, roll-up */
+  main { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 16px 16px 14px; border-bottom: 1px solid var(--line); }
+  #track { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #track .vp { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  #track .lines { font-weight: 700; font-size: var(--fs); line-height: var(--lh); will-change: transform; }
+  #track .ln { white-space: nowrap; height: calc(var(--lh) * 1em); }
+  #track .p { opacity: .7; }
+  #msg { font-size: 15px; opacity: .7; padding-bottom: 6px; }
+  #msg:empty { display: none; }
+
+  /* Comandi in basso: celle della griglia */
+  .comandi .cella { flex: 1; justify-content: center; padding: 0; }
+  .comandi button {
+    all: unset; box-sizing: border-box; width: 100%; padding: 13px 0; text-align: center; cursor: pointer;
+    font: 700 16px var(--font); color: var(--fg);
+  }
+  .comandi button:active { background: var(--on-bg); color: var(--on-fg); }
 </style>
 </head>
 <body>
-<header><b id="title">Sous-titres en direct</b><button class="tab" data-lang="fr">FR</button><button class="tab" data-lang="it">IT</button><button class="tab" data-lang="en">EN</button></header>
-<main id="main"><div id="msg">Connexion…</div></main>
-<script src="firebase-config.js?v=9"></script>
-<script type="module">
-import { initFirebase, subscribe } from './js/relay.js?v=9';
+  <div class="fascia">
+    <div class="cella logo">TEST</div>
+    <div class="cella titolo" id="titolo">Sous-titres en direct</div>
+    <div class="cella stato" id="stato"><i></i><span id="statoTxt">…</span></div>
+  </div>
+  <div class="fascia tabs" id="tabs"></div>
 
+  <main>
+    <div id="msg"></div>
+    <div id="track"><div class="vp"><div class="lines"></div></div></div>
+  </main>
+
+  <div class="fascia comandi">
+    <div class="cella"><button id="meno" aria-label="Texte plus petit">A−</button></div>
+    <div class="cella"><button id="piu" aria-label="Texte plus grand">A+</button></div>
+    <div class="cella"><button id="tema" aria-label="Contraste"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="vertical-align:-4px"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button></div>
+  </div>
+
+<script src="firebase-config.js?v=10"></script>
+<script type="module">
+import { initFirebase, subscribe } from './js/relay.js?v=10';
+import { Captions } from './js/captions.js?v=10';
+
+const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const evento = q.get('evento') || 'evento-finale';
-let lang = q.get('lang') || 'fr';
-let unsub = null;
-let partialEl = null;
-const main = document.getElementById('main');
-const MAX = 8;   // righe tenute a video: è un sottotitolo, non un verbale
+const TABS = (q.get('tabs') || 'fr,it,orig').split(',').filter(Boolean);
+const LABEL = { fr: 'Français', it: 'Italiano', en: 'English', orig: 'V.O.' };
+const UI = {
+  fr:   { titolo: 'Sous-titres en direct', live: 'En direct', attente: 'En attente', connexion: 'Connexion…', vide: 'Les sous-titres apparaîtront ici quand quelqu\'un parle dans une autre langue.' },
+  it:   { titolo: 'Sottotitoli in diretta', live: 'In diretta', attente: 'In attesa', connexion: 'Connessione…', vide: 'I sottotitoli compariranno qui quando qualcuno parla in un\'altra lingua.' },
+  en:   { titolo: 'Live subtitles', live: 'Live', attente: 'Waiting', connexion: 'Connecting…', vide: 'Subtitles will appear here when someone speaks another language.' },
+  orig: { titolo: 'Version originale', live: 'En direct', attente: 'En attente', connexion: 'Connexion…', vide: 'La transcription apparaîtra ici.' },
+};
 
-function show(text, final) {
-  const msg = document.getElementById('msg'); if (msg) msg.remove();
-  if (!partialEl) { partialEl = document.createElement('p'); partialEl.className = 'partial'; main.appendChild(partialEl); }
-  partialEl.textContent = text;
-  if (final) { partialEl.className = ''; partialEl = null; }
-  while (main.children.length > MAX) main.removeChild(main.firstChild);
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+// --- preferenze locali (dimensione, tema, lingua)
+const store = { get(k, d) { try { return localStorage.getItem('tel_' + k) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem('tel_' + k, v); } catch { /* ignora */ } } };
+let lang = q.get('lang') || store.get('lang', 'fr');
+if (!TABS.includes(lang)) lang = TABS[0];
+let fs = +store.get('fs', 26);
+let theme = store.get('theme', 'giorno');
+
+const cap = new Captions($('track'), () => Math.max(2, Math.floor($('track').querySelector('.vp').clientHeight / (cap.lineH || fs * 1.25))));
+
+function applyLook() {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.setProperty('--fs', fs + 'px');
+  document.querySelector('meta[name=theme-color]').content = theme === 'notte' ? '#61180C' : '#D3EBF1';
+  cap.invalidate();
 }
 
+// --- stato "in diretta": acceso quando arriva testo, si spegne dopo 4 s di silenzio
+let liveT = null;
+function pulse() {
+  $('stato').classList.add('live'); $('statoTxt').textContent = UI[lang].live;
+  clearTimeout(liveT);
+  liveT = setTimeout(() => { $('stato').classList.remove('live'); $('statoTxt').textContent = UI[lang].attente; }, 4000);
+}
+
+// --- schede lingua
+for (const t of TABS) {
+  const c = document.createElement('div'); c.className = 'cella';
+  const b = document.createElement('button'); b.textContent = LABEL[t] || t; b.dataset.lang = t;
+  b.onclick = () => { lang = t; store.set('lang', t); history.replaceState(null, '', `?evento=${encodeURIComponent(evento)}&lang=${t}${q.has('tabs') ? '&tabs=' + q.get('tabs') : ''}`); start(); };
+  c.appendChild(b); $('tabs').appendChild(c);
+}
+
+let unsub = null;
 function start() {
-  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.lang === lang));
-  document.documentElement.lang = lang;
-  document.getElementById('title').textContent = { fr: 'Sous-titres en direct', it: 'Sottotitoli in diretta', en: 'Live subtitles' }[lang] || 'Live';
-  main.innerHTML = '<div id="msg">…</div>'; partialEl = null;
+  document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lang === lang));
+  document.documentElement.lang = lang === 'orig' ? 'fr' : lang;
+  $('titolo').textContent = UI[lang].titolo;
+  $('statoTxt').textContent = UI[lang].attente;
+  $('msg').textContent = UI[lang].vide;
+  cap.clear();
   if (unsub) unsub();
   unsub = subscribe(evento, lang, {
-    onCurrent: (t) => { if (t) show(t, false); else if (partialEl) { partialEl.remove(); partialEl = null; } },
-    onLine: (l) => { if (l.text && l.text.trim()) show(l.text, true); },
+    onCurrent: (t) => { if (t) $('msg').textContent = ''; cap.push(lang, t, false); if (t) pulse(); },
+    onLine: (l) => { if (!l.text) return; if (l.text.trim()) $('msg').textContent = ''; cap.push(lang, l.text, true); pulse(); },
   }, { history: 0 });   // solo da adesso in poi, niente storico
 }
 
-document.querySelectorAll('.tab').forEach((t) => (t.onclick = () => { lang = t.dataset.lang; history.replaceState(null, '', `?evento=${encodeURIComponent(evento)}&lang=${lang}`); start(); }));
-
-initFirebase().then((db) => {
-  if (!db) { main.innerHTML = '<div id="msg">Relay non configurato (firebase-config.js).</div>'; return; }
-  start();
-}).catch((e) => { main.innerHTML = `<div id="msg">Erreur: ${e.message}</div>`; });
+$('meno').onclick = () => { fs = Math.max(18, fs - 2); store.set('fs', fs); applyLook(); };
+$('piu').onclick = () => { fs = Math.min(44, fs + 2); store.set('fs', fs); applyLook(); };
+$('tema').onclick = () => { theme = theme === 'giorno' ? 'notte' : 'giorno'; store.set('theme', theme); applyLook(); };
+window.addEventListener('resize', () => cap.invalidate());
+document.fonts && document.fonts.ready.then(() => cap.invalidate());
 
 // Evita che lo schermo si spenga durante l'evento, dove supportato.
-let lock = null;
-document.addEventListener('click', async () => { try { if ('wakeLock' in navigator && !lock) lock = await navigator.wakeLock.request('screen'); } catch { /* ignora */ } }, { once: true });
+async function wake() { try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch { /* ignora */ } }
+document.addEventListener('click', wake, { once: true });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
+
+applyLook();
+$('statoTxt').textContent = UI[lang].connexion;
+initFirebase().then((db) => {
+  if (!db) { $('msg').textContent = 'Relay non configuré.'; return; }
+  start();
+}).catch((e) => { $('msg').textContent = 'Erreur : ' + e.message; });
 </script>
 </body>
 </html>

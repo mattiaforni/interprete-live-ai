@@ -8,7 +8,7 @@ pubblicate su GitHub Pages.
 |---|---|---|
 | `index.html` | **Operatore**: riceve l'audio dal mixer, apre le sessioni AI, mostra anteprima e log | PC in regia |
 | `schermo.html?lang=it` | **Maxischermo**: solo il testo, a tutto schermo | Stesso PC, seconda finestra sul proiettore |
-| `telefono.html?lang=fr` | **Ospiti**: sottotitoli in francese (o altra lingua) sul telefono via QR | Telefoni, tramite relay Firebase |
+| `telefono.html?lang=fr` | **Ospiti**: sottotitoli in francese (schede Français / Italiano / V.O.), stile TEST, testo regolabile A−/A+, tema chiaro/scuro | Telefoni, tramite relay Firebase |
 
 Come funziona: il PC operatore cattura l'audio (PCM 16 kHz) e lo manda in parallelo a una
 sessione Live per ogni lingua scelta. Il modello restituisce audio tradotto (che ignoriamo)

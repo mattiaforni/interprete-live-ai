@@ -122,8 +122,10 @@ export class Captions {
     let lines = this.layout(width);
 
     // Togli dalla testa righe intere già uscite dalla vista (solo testo concluso).
-    if (lines.length > KEEP_LINES) {
-      const k = lines.length - KEEP_LINES;
+    const n = this.visibleLines();
+    const keep = Math.max(KEEP_LINES, n + 2);
+    if (lines.length > keep) {
+      const k = lines.length - keep;
       const cut = lines[k].start;
       if (cut <= this.committed.length) {
         this.committed.splice(0, cut);
@@ -134,7 +136,6 @@ export class Captions {
     this.currentLines = lines.length;
 
     // Mostriamo N righe + 1 nascosta sopra, che serve all'animazione di salita.
-    const n = this.visibleLines();
     const show = lines.slice(-(n + 1));
     const frag = document.createDocumentFragment();
     for (const ln of show) {
