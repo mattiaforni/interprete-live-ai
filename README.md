@@ -68,6 +68,8 @@ Settings → Pages → *Deploy from a branch* → `main` / root. L'URL sarà
 6. Authentication → *Impostazioni → Domini autorizzati*: aggiungi `mattiaforni.github.io` se non c'è.
 7. Stampare un QR verso `https://…/telefono.html?evento=evento-finale&lang=fr`.
 
+Le trascrizioni non restano nel database: la pagina operatore le cancella quando si preme **Avvia** e quando si preme **Ferma**. I telefoni partono vuoti, mostrano solo ciò che viene detto da quando si apre la pagina e tengono a video le ultime 8 righe.
+
 Dopo l'evento basta disattivare il metodo Anonimo (o cancellare il progetto).
 
 ## Il giorno dell'evento

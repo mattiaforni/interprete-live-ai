@@ -47,7 +47,7 @@
   <span id="status"><span class="dot"></span>fermo</span>
   <span class="stats" id="spoken"></span>
   <span class="stats" id="stats"></span>
-  <span class="stats" style="margin-left:auto">v8</span>
+  <span class="stats" style="margin-left:auto">v9</span>
 </header>
 <main>
   <aside>
@@ -109,12 +109,12 @@
   </section>
 </main>
 
-<script src="firebase-config.js?v=8"></script>
+<script src="firebase-config.js?v=9"></script>
 <script type="module">
-import { MicCapture, listAudioInputs } from './js/audio.js?v=8';
-import { LiveSession } from './js/live.js?v=8';
-import { initFirebase, Relay } from './js/relay.js?v=8';
-import { Router } from './js/router.js?v=8';
+import { MicCapture, listAudioInputs } from './js/audio.js?v=9';
+import { LiveSession } from './js/live.js?v=9';
+import { initFirebase, Relay } from './js/relay.js?v=9';
+import { Router } from './js/router.js?v=9';
 
 const $ = (id) => document.getElementById(id);
 const LANG_NAMES = { it: 'Italiano', fr: 'Français', en: 'English' };
@@ -215,7 +215,11 @@ $('start').onclick = async () => {
     const db = await initFirebase({ auth: true });
     relay = new Relay($('eventId').value.trim() || 'evento');
     $('relayHint').textContent = db ? `Relay Firebase attivo: evento "${relay.eventId}"` : 'Relay Firebase: non configurato (vedi firebase-config.js).';
-    if (db) log('Firebase: accesso anonimo ok, relay attivo');
+    if (db) {
+      log('Firebase: accesso anonimo ok, relay attivo');
+      await relay.clearAll();
+      log('Firebase: trascrizioni precedenti cancellate');
+    }
   } catch (e) { log('Firebase: ' + e.message + ' — relay disattivato'); relay = new Relay(); }
 
   // Il router decide quale sessione alimenta quale canale (vedi js/router.js).
@@ -276,6 +280,10 @@ async function stopAll() {
   if (mic) { await mic.stop(); mic = null; }
   sessions.forEach((s) => s.close());
   sessions = [];
+  // Nel database non resta nulla di quanto detto: i telefoni conservano solo ciò che hanno già a video.
+  if (relay && relay.enabled) {
+    setTimeout(() => relay.clearAll().then(() => log('Firebase: trascrizioni cancellate')).catch((e) => log('Firebase: ' + e.message)), 1500);
+  }
   clearInterval(statsTimer);
   $('level').style.width = '0';
   $('start').disabled = false;
@@ -294,9 +302,9 @@ function updateStats() {
 
 // --- viste
 const base = location.href.replace(/[^/]*$/, '');
-$('openScreenIt').onclick = () => window.open(base + 'schermo.html?v=8&lang=it', 'schermo_it', 'width=1280,height=720');
-$('openScreenFr').onclick = () => window.open(base + 'schermo.html?v=8&lang=fr', 'schermo_fr', 'width=1280,height=720');
-$('openScreenDual').onclick = () => window.open(base + 'schermo.html?v=8&lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
+$('openScreenIt').onclick = () => window.open(base + 'schermo.html?v=9&lang=it', 'schermo_it', 'width=1280,height=720');
+$('openScreenFr').onclick = () => window.open(base + 'schermo.html?v=9&lang=fr', 'schermo_fr', 'width=1280,height=720');
+$('openScreenDual').onclick = () => window.open(base + 'schermo.html?v=9&lang=auto&lang2=orig', 'schermo_doppio', 'width=1280,height=720');
 $('openPhone').onclick = () => window.open(base + `telefono.html?evento=${encodeURIComponent($('eventId').value.trim())}&lang=fr`, '_blank');
 
 window.addEventListener('beforeunload', (e) => { if (sessions.length) { e.preventDefault(); e.returnValue = ''; } });

@@ -62,10 +62,10 @@ export class Relay {
     this.base(lang).child('current').set({ text: '', t: now });
   }
 
-  /** Pulisce le righe di una lingua (da usare prima dell'evento). */
-  async clear(lang) {
+  /** Cancella tutte le trascrizioni dell'evento dal database (all'avvio e alla fine). */
+  async clearAll() {
     if (!this.enabled) return;
-    await this.base(lang).remove();
+    await db.ref(`eventi/${this.eventId}`).remove();
   }
 }
 

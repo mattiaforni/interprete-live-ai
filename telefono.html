@@ -22,9 +22,9 @@
 <body>
 <header><b id="title">Sous-titres en direct</b><button class="tab" data-lang="fr">FR</button><button class="tab" data-lang="it">IT</button><button class="tab" data-lang="en">EN</button></header>
 <main id="main"><div id="msg">Connexion…</div></main>
-<script src="firebase-config.js?v=8"></script>
+<script src="firebase-config.js?v=9"></script>
 <script type="module">
-import { initFirebase, subscribe } from './js/relay.js?v=8';
+import { initFirebase, subscribe } from './js/relay.js?v=9';
 
 const q = new URLSearchParams(location.search);
 const evento = q.get('evento') || 'evento-finale';
@@ -32,7 +32,7 @@ let lang = q.get('lang') || 'fr';
 let unsub = null;
 let partialEl = null;
 const main = document.getElementById('main');
-const MAX = 40;
+const MAX = 8;   // righe tenute a video: è un sottotitolo, non un verbale
 
 function show(text, final) {
   const msg = document.getElementById('msg'); if (msg) msg.remove();
@@ -52,7 +52,7 @@ function start() {
   unsub = subscribe(evento, lang, {
     onCurrent: (t) => { if (t) show(t, false); else if (partialEl) { partialEl.remove(); partialEl = null; } },
     onLine: (l) => { if (l.text && l.text.trim()) show(l.text, true); },
-  });
+  }, { history: 0 });   // solo da adesso in poi, niente storico
 }
 
 document.querySelectorAll('.tab').forEach((t) => (t.onclick = () => { lang = t.dataset.lang; history.replaceState(null, '', `?evento=${encodeURIComponent(evento)}&lang=${lang}`); start(); }));
