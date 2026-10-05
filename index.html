@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interprete live — operatore</title>
+<style>
+  :root {
+    --bg: #111318; --panel: #1a1d24; --line: #2a2f3a; --fg: #e8e9ec; --muted: #8b919e;
+    --ok: #3ccb7f; --warn: #f0b429; --err: #ef5350; --accent: #4f8cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 6px; }
+  .dot.ready { background: var(--ok); } .dot.connecting, .dot.reconnecting { background: var(--warn); } .dot.error { background: var(--err); }
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 0; min-height: calc(100vh - 50px); }
+  aside { border-right: 1px solid var(--line); padding: 16px 20px; overflow: auto; }
+  section { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+  input[type=text], input[type=password], select { width: 100%; background: var(--panel); border: 1px solid var(--line); color: var(--fg); padding: 8px 10px; border-radius: 6px; font: inherit; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chk { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; margin-right: 12px; }
+  button { background: var(--accent); color: white; border: 0; padding: 9px 14px; border-radius: 6px; font: inherit; cursor: pointer; }
+  button.secondary { background: var(--panel); border: 1px solid var(--line); color: var(--fg); }
+  button.danger { background: var(--err); }
+  button:disabled { opacity: .5; cursor: default; }
+  .meter { height: 8px; background: var(--panel); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .meter > div { height: 100%; width: 0; background: var(--ok); transition: width .08s; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; flex: 1; }
+  .col { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; min-height: 320px; }
+  .col h2 { font-size: 13px; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; display: flex; justify-content: space-between; }
+  .lines { flex: 1; overflow: auto; font-size: 17px; line-height: 1.4; }
+  .lines p { margin: 0 0 8px; }
+  .lines p.partial { color: var(--muted); font-style: italic; }
+  #log { background: #0c0e12; border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--muted); max-height: 160px; overflow: auto; white-space: pre-wrap; }
+  .stats { font-size: 13px; color: var(--muted); }
+  .stats b { color: var(--fg); }
+  small.hint { color: var(--muted); font-size: 12px; display: block; margin-top: 4px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Interprete live — operatore</h1>
+  <span id="status"><span class="dot"></span>fermo</span>
+  <span class="stats" id="stats"></span>
+</header>
+<main>
+  <aside>
+    <label for="apiKey">Chiave API Gemini</label>
+    <input id="apiKey" type="password" placeholder="AIza…" autocomplete="off">
+    <small class="hint">Resta solo in questo browser (localStorage). Non va mai nel repository.</small>
+
+    <label for="mic">Ingresso audio</label>
+    <div class="row">
+      <select id="mic" style="flex:1"></select>
+      <button class="secondary" id="refreshMic" title="Aggiorna elenco">↻</button>
+    </div>
+    <div class="meter"><div id="level"></div></div>
+    <small class="hint">Dal mixer: aux/line out → interfaccia USB → questo PC. Solo i microfoni dei relatori, niente musica.</small>
+
+    <label>Lingue dei sottotitoli</label>
+    <div class="row">
+      <span class="chk"><input type="checkbox" id="lang_it" checked> <label for="lang_it" style="margin:0;text-transform:none">Italiano</label></span>
+      <span class="chk"><input type="checkbox" id="lang_fr" checked> <label for="lang_fr" style="margin:0;text-transform:none">Français</label></span>
+      <span class="chk"><input type="checkbox" id="lang_en"> <label for="lang_en" style="margin:0;text-transform:none">English</label></span>
+    </div>
+    <small class="hint">Una sessione per lingua. Chi parla già nella lingua scelta viene trascritto tale e quale.</small>
+
+    <label for="eventId">ID evento (relay telefoni)</label>
+    <input id="eventId" type="text" value="evento-finale">
+    <small class="hint" id="relayHint">Relay Firebase: non configurato (vedi firebase-config.js).</small>
+
+    <label for="model">Modello</label>
+    <input id="model" type="text" value="gemini-3.5-live-translate-preview">
+
+    <div class="row" style="margin-top:16px">
+      <button id="start">Avvia</button>
+      <button id="stop" class="danger" disabled>Ferma</button>
+    </div>
+
+    <label>Viste</label>
+    <div class="row">
+      <button class="secondary" id="openScreenIt">Schermo IT</button>
+      <button class="secondary" id="openScreenFr">Schermo FR</button>
+      <button class="secondary" id="openPhone">Telefono</button>
+    </div>
+    <small class="hint">Lo schermo si apre in una nuova finestra: spostala sul proiettore e premi <b>F</b> per il tutto schermo.</small>
+
+    <label>Avanzate</label>
+    <span class="chk"><input type="checkbox" id="optResume" checked> <label for="optResume" style="margin:0;text-transform:none">Ripresa sessione</label></span>
+    <span class="chk"><input type="checkbox" id="optCompress" checked> <label for="optCompress" style="margin:0;text-transform:none">Compressione contesto</label></span>
+    <span class="chk"><input type="checkbox" id="optEcho" checked> <label for="optEcho" style="margin:0;text-transform:none">Echo lingua target</label></span>
+  </aside>
+
+  <section>
+    <div class="cols" id="cols">
+      <div class="col" data-lang="orig"><h2>Originale (trascrizione)</h2><div class="lines" id="lines_orig"></div></div>
+    </div>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+import { MicCapture, listAudioInputs } from './js/audio.js';
+import { LiveSession } from './js/live.js';
+import { initFirebase, Relay } from './js/relay.js';
+
+const $ = (id) => document.getElementById(id);
+const LANG_NAMES = { it: 'Italiano', fr: 'Français', en: 'English' };
+const PRICE_PER_MIN_USD = 0.037; // stima per stream, da verificare sulla pagina prezzi Google
+
+const bc = new BroadcastChannel('interprete-live');
+let mic = null;
+let sessions = [];
+let relay = null;
+let startedAt = null;
+let statsTimer = null;
+const MAX_LINES = 12;
+
+// --- persistenza leggera
+$('apiKey').value = localStorage.getItem('geminiKey') || '';
+$('apiKey').addEventListener('change', () => localStorage.setItem('geminiKey', $('apiKey').value.trim()));
+$('eventId').value = localStorage.getItem('eventId') || 'evento-finale';
+$('eventId').addEventListener('change', () => localStorage.setItem('eventId', $('eventId').value.trim()));
+
+function log(m) {
+  const el = $('log');
+  const t = new Date().toLocaleTimeString('it-IT');
+  el.textContent += `${t}  ${m}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(cls, text) {
+  $('status').innerHTML = `<span class="dot ${cls}"></span>${text}`;
+}
+
+// --- microfoni
+async function refreshMics() {
+  try {
+    // chiediamo il permesso una volta per avere le etichette
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach((t) => t.stop());
+  } catch (e) { log('permesso microfono negato: ' + e.message); }
+  const inputs = await listAudioInputs();
+  const sel = $('mic');
+  const prev = localStorage.getItem('micId');
+  sel.innerHTML = '';
+  for (const d of inputs) {
+    const o = document.createElement('option');
+    o.value = d.deviceId; o.textContent = d.label || `Ingresso ${sel.length + 1}`;
+    if (d.deviceId === prev) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+$('refreshMic').onclick = refreshMics;
+$('mic').addEventListener('change', () => localStorage.setItem('micId', $('mic').value));
+refreshMics();
+
+// --- colonne dei sottotitoli
+function ensureColumn(lang) {
+  let col = document.querySelector(`.col[data-lang="${lang}"]`);
+  if (col) return col;
+  col = document.createElement('div');
+  col.className = 'col'; col.dataset.lang = lang;
+  col.innerHTML = `<h2><span>${LANG_NAMES[lang] || lang}</span><span class="dot" id="dot_${lang}"></span></h2><div class="lines" id="lines_${lang}"></div>`;
+  $('cols').appendChild(col);
+  return col;
+}
+
+const partials = {};
+function render(lang, text, final) {
+  const box = $(`lines_${lang}`);
+  if (!box) return;
+  let p = partials[lang];
+  if (!p) { p = document.createElement('p'); p.className = 'partial'; box.appendChild(p); partials[lang] = p; }
+  p.textContent = text;
+  if (final) {
+    p.className = '';
+    partials[lang] = null;
+    while (box.children.length > MAX_LINES) box.removeChild(box.firstChild);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+// --- avvio / stop
+$('start').onclick = async () => {
+  const apiKey = $('apiKey').value.trim();
+  if (!apiKey) { log('inserisci la chiave API'); return; }
+  const langs = ['it', 'fr', 'en'].filter((l) => $(`lang_${l}`).checked);
+  if (!langs.length) { log('scegli almeno una lingua'); return; }
+
+  $('start').disabled = true;
+  $('cols').querySelectorAll('.col:not([data-lang="orig"])').forEach((c) => c.remove());
+  Object.keys(partials).forEach((k) => delete partials[k]);
+  document.querySelectorAll('.lines').forEach((l) => (l.innerHTML = ''));
+
+  try {
+    const db = await initFirebase();
+    relay = new Relay($('eventId').value.trim() || 'evento');
+    $('relayHint').textContent = db ? `Relay Firebase attivo: evento "${relay.eventId}"` : 'Relay Firebase: non configurato (vedi firebase-config.js).';
+  } catch (e) { log('Firebase: ' + e.message); relay = new Relay(); }
+
+  sessions = langs.map((lang) => {
+    ensureColumn(lang);
+    return new LiveSession({
+      apiKey, target: lang,
+      model: $('model').value.trim(),
+      echo: $('optEcho').checked,
+      resumption: $('optResume').checked,
+      compression: $('optCompress').checked,
+      onLog: log,
+      onStatus: (s) => {
+        const d = $(`dot_${lang}`); if (d) d.className = `dot ${s}`;
+        const all = sessions.map((x) => x.ready);
+        if (all.every(Boolean)) setStatus('ready', 'in ascolto');
+        else setStatus('connecting', 'connessione…');
+      },
+      onText: (kind, text, final) => {
+        if (kind === 'in') {
+          // L'originale arriva da ogni sessione: mostriamo solo quella della prima lingua per evitare doppioni.
+          if (lang !== langs[0]) return;
+          render('orig', text, final);
+          bc.postMessage({ lang: 'orig', text, final });
+          return;
+        }
+        render(lang, text, final);
+        bc.postMessage({ lang, text, final });
+        if (final) relay.final(lang, text); else relay.partial(lang, text);
+      },
+    });
+  });
+  sessions.forEach((s) => s.connect());
+
+  mic = new MicCapture({
+    onChunk: (pcm) => sessions.forEach((s) => s.sendAudio(pcm)),
+    onLevel: (rms) => { $('level').style.width = Math.min(100, rms * 300) + '%'; },
+  });
+  try {
+    const rate = await mic.start($('mic').value || undefined);
+    log(`microfono avviato a ${rate} Hz`);
+  } catch (e) {
+    log('errore microfono: ' + e.message);
+    await stopAll();
+    return;
+  }
+  startedAt = Date.now();
+  statsTimer = setInterval(updateStats, 1000);
+  $('stop').disabled = false;
+};
+
+async function stopAll() {
+  if (mic) { await mic.stop(); mic = null; }
+  sessions.forEach((s) => s.close());
+  sessions = [];
+  clearInterval(statsTimer);
+  $('level').style.width = '0';
+  $('start').disabled = false;
+  $('stop').disabled = true;
+  setStatus('', 'fermo');
+}
+$('stop').onclick = stopAll;
+
+function updateStats() {
+  if (!startedAt) return;
+  const min = (Date.now() - startedAt) / 60000;
+  const n = sessions.length;
+  const usd = min * n * PRICE_PER_MIN_USD;
+  $('stats').innerHTML = `<b>${min.toFixed(1)}</b> min · ${n} session${n === 1 ? 'e' : 'i'} · stima <b>$${usd.toFixed(2)}</b>`;
+}
+
+// --- viste
+const base = location.href.replace(/[^/]*$/, '');
+$('openScreenIt').onclick = () => window.open(base + 'schermo.html?lang=it', 'schermo_it', 'width=1280,height=720');
+$('openScreenFr').onclick = () => window.open(base + 'schermo.html?lang=fr', 'schermo_fr', 'width=1280,height=720');
+$('openPhone').onclick = () => window.open(base + `telefono.html?evento=${encodeURIComponent($('eventId').value.trim())}&lang=fr`, '_blank');
+
+window.addEventListener('beforeunload', (e) => { if (sessions.length) { e.preventDefault(); e.returnValue = ''; } });
+</script>
+</body>
+</html>

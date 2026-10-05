@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<title>Sous-titres en direct</title>
+<style>
+  :root { --bg: #111318; --panel: #1a1d24; --line: #2a2f3a; --fg: #e8e9ec; --muted: #8b919e; --accent: #4f8cff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 19px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; align-items: center; gap: 10px; padding-top: max(10px, env(safe-area-inset-top)); }
+  header b { flex: 1; font-size: 15px; }
+  .tab { border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 6px 12px; border-radius: 999px; font-size: 14px; }
+  .tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { padding: 12px 16px 40vh; }
+  main p { margin: 0 0 12px; }
+  main p.partial { color: var(--muted); }
+  #msg { color: var(--muted); font-size: 14px; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<header><b id="title">Sous-titres en direct</b><button class="tab" data-lang="fr">FR</button><button class="tab" data-lang="it">IT</button><button class="tab" data-lang="en">EN</button></header>
+<main id="main"><div id="msg">Connexion…</div></main>
+<script src="firebase-config.js"></script>
+<script type="module">
+import { initFirebase, subscribe } from './js/relay.js';
+
+const q = new URLSearchParams(location.search);
+const evento = q.get('evento') || 'evento-finale';
+let lang = q.get('lang') || 'fr';
+let unsub = null;
+let partialEl = null;
+const main = document.getElementById('main');
+const MAX = 40;
+
+function show(text, final) {
+  const msg = document.getElementById('msg'); if (msg) msg.remove();
+  if (!partialEl) { partialEl = document.createElement('p'); partialEl.className = 'partial'; main.appendChild(partialEl); }
+  partialEl.textContent = text;
+  if (final) { partialEl.className = ''; partialEl = null; }
+  while (main.children.length > MAX) main.removeChild(main.firstChild);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+function start() {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.lang === lang));
+  document.documentElement.lang = lang;
+  document.getElementById('title').textContent = { fr: 'Sous-titres en direct', it: 'Sottotitoli in diretta', en: 'Live subtitles' }[lang] || 'Live';
+  main.innerHTML = '<div id="msg">…</div>'; partialEl = null;
+  if (unsub) unsub();
+  unsub = subscribe(evento, lang, {
+    onCurrent: (t) => { if (t) show(t, false); },
+    onLine: (l) => show(l.text, true),
+  });
+}
+
+document.querySelectorAll('.tab').forEach((t) => (t.onclick = () => { lang = t.dataset.lang; history.replaceState(null, '', `?evento=${encodeURIComponent(evento)}&lang=${lang}`); start(); }));
+
+initFirebase().then((db) => {
+  if (!db) { main.innerHTML = '<div id="msg">Relay non configurato (firebase-config.js).</div>'; return; }
+  start();
+}).catch((e) => { main.innerHTML = `<div id="msg">Erreur: ${e.message}</div>`; });
+
+// Evita che lo schermo si spenga durante l'evento, dove supportato.
+let lock = null;
+document.addEventListener('click', async () => { try { if ('wakeLock' in navigator && !lock) lock = await navigator.wakeLock.request('screen'); } catch { /* ignora */ } }, { once: true });
+</script>
+</body>
+</html>

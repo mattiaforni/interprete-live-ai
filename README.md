@@ -1,0 +1,96 @@
+# Interprete live AI
+
+Sottotitoli tradotti in tempo reale per un evento in sala, con la Gemini Live API
+(modello `gemini-3.5-live-translate-preview`). Nessun backend: tre pagine statiche
+pubblicate su GitHub Pages.
+
+| Pagina | A cosa serve | Dove gira |
+|---|---|---|
+| `index.html` | **Operatore**: riceve l'audio dal mixer, apre le sessioni AI, mostra anteprima e log | PC in regia |
+| `schermo.html?lang=it` | **Maxischermo**: solo il testo, a tutto schermo | Stesso PC, seconda finestra sul proiettore |
+| `telefono.html?lang=fr` | **Ospiti**: sottotitoli in francese (o altra lingua) sul telefono via QR | Telefoni, tramite relay Firebase |
+
+Come funziona: il PC operatore cattura l'audio (PCM 16 kHz) e lo manda in parallelo a una
+sessione Live per ogni lingua scelta. Il modello restituisce audio tradotto (che ignoriamo)
+e la trascrizione testuale della traduzione, che diventa il sottotitolo. Lo schermo riceve
+il testo via `BroadcastChannel` (stesso browser, nessuna rete); i telefoni lo ricevono via
+Firebase Realtime Database.
+
+Con "echo lingua target" attivo, chi parla già nella lingua di destinazione viene
+trascritto tale e quale: la sessione IT mostra l'italiano quando parla un italiano e la
+traduzione quando parla un francese; la sessione FR fa il contrario. Così la direzione
+si inverte da sola.
+
+## Setup
+
+### 1. Chiave API e fatturazione (una volta)
+1. [Google AI Studio](https://aistudio.google.com) → *Get API key* → crea una chiave collegata a un progetto Google Cloud.
+2. Nel progetto Cloud attiva la **fatturazione**: il tier a pagamento ha limiti più alti e non usa i dati inviati per l'addestramento.
+3. Costo indicativo del modello di traduzione: ~0,037 $ al minuto per stream. Con IT + FR sono due stream: 30 minuti ≈ 2,5 $.
+
+La chiave si incolla nella pagina operatore e resta nel `localStorage` di quel browser. Non va mai committata.
+
+### 2. GitHub Pages
+Settings → Pages → *Deploy from a branch* → `main` / root. L'URL sarà
+`https://mattiaforni.github.io/interprete-live-ai/`. Serve HTTPS per l'accesso al microfono.
+
+### 3. Audio in sala
+- Chiedere al service un **aux / line out con i soli microfoni dei relatori** (niente playback, niente musica).
+- Entrare nel PC con un'interfaccia audio USB (o il mixer stesso se ha uscita USB).
+- Nella pagina operatore scegliere quell'ingresso. Il browser disattiva già cancellazione eco, soppressione rumore e gain automatico.
+- Il VU-meter deve muoversi bene senza stare sempre al massimo.
+
+### 4. Relay Firebase (solo per i telefoni degli ospiti)
+1. [Firebase console](https://console.firebase.google.com) → nuovo progetto → **Realtime Database** (regione Europa) → crea.
+2. *Impostazioni progetto → Le tue app → Web*: copia la configurazione SDK in `firebase-config.js`.
+3. Regole del database, per il giorno dell'evento:
+   ```json
+   {
+     "rules": {
+       "eventi": {
+         "$evento": {
+           ".read": true,
+           ".write": true,
+           "$lang": {
+             "current": { ".validate": "newData.hasChildren(['text','t']) && newData.child('text').val().length < 2000" },
+             "lines": { "$id": { ".validate": "newData.hasChildren(['text','t']) && newData.child('text').val().length < 2000" } }
+           }
+         }
+       }
+     }
+   }
+   ```
+   Scrittura aperta ma validata: chi conosce l'URL potrebbe scrivere righe. Per un evento
+   di un giorno è un rischio accettabile; rimettere `".write": false` subito dopo.
+4. Stampare un QR verso `https://…/telefono.html?evento=evento-finale&lang=fr`.
+
+## Il giorno dell'evento
+1. Aprire `index.html` su Chrome, incollare la chiave, scegliere l'ingresso audio e le lingue.
+2. **Avvia**. Attendere che tutte le sessioni siano verdi ("in ascolto").
+3. **Schermo IT** → trascinare la finestra sul proiettore → tasto `F`. Tasti: `+`/`−` dimensione, `T` tema chiaro/scuro, `L` fascia bassa, `1`–`6` numero di righe, `C` cancella.
+4. A fine intervento **Ferma**: i minuti si pagano finché le sessioni sono aperte.
+
+## Prova generale (da fare prima)
+1. Senza mixer: scegliere come ingresso il microfono del PC e far riprodurre da un altro dispositivo un video in francese (un TG, un'intervista). Verificare latenza e qualità.
+2. Con il mixer e un relatore vero, nella sala dell'evento, con le luci e i microfoni dell'evento.
+3. Provare un italiano che parla: lo schermo IT deve mostrare l'italiano, il telefono FR la traduzione.
+4. Lasciare acceso per più di 10 minuti per verificare che la riconnessione automatica (ripresa sessione) funzioni senza perdere testo.
+
+## Limiti noti
+- Il modello è in *preview*: sul forum Google sono segnalati casi di output in inglese anziché nella lingua configurata e troncature delle ultime parole. La prova generale serve a vedere se ci capitano.
+- Latenza tipica 1–3 secondi.
+- Voci sovrapposte o chiacchiericcio di fondo degradano molto la qualità: un solo microfono aperto alla volta.
+- Nessun glossario: nomi propri e sigle possono uscire storpiati.
+- La connessione WebSocket dura ~10 minuti; la pagina riconnette da sola con l'handle di sessione. Se "Ripresa sessione" o "Compressione contesto" dessero errore col modello di traduzione, disattivarle nelle opzioni avanzate e riavviare.
+- Piano B già pronto: Google Meet con sottotitoli tradotti, oppure LiveVoice.
+
+## Struttura
+```
+index.html          pagina operatore
+schermo.html        vista maxischermo
+telefono.html       vista ospiti (Firebase)
+firebase-config.js  config Firebase (null = relay spento)
+js/audio.js         cattura microfono → PCM 16 kHz
+js/live.js          sessione Live API (WebSocket, trascrizioni, riconnessione)
+js/relay.js         scrittura/lettura Firebase
+```
